@@ -1,98 +1,60 @@
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
-import os, time
+import os, time, re
+from subprocess import Popen, PIPE
 
 
 class MainWindow(Gtk.Window):
 
     def __init__(self):
-        super().__init__(title="File manager")
+        super().__init__(title="Task manager")
         self.connection = None
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_size_request(1000, 600)
         master_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.add(master_box)
+        tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        master_box.pack_start(tree_box, False, True, 0)
+        scrollable_treelist = Gtk.ScrolledWindow()
+        scrollable_treelist.set_size_request(500,500)
+        tree_box.pack_start(scrollable_treelist, True, True, 0)
+        treeview = self.create_tree()
+        scrollable_treelist.add(treeview)
+        button_close = Gtk.Button(label="Close")
+        button_close.connect("clicked", Gtk.main_quit)
+        master_box.pack_start(button_close, False, False, 0)
 
-        button_box = Gtk.Box()
-        master_box.pack_start(button_box, False, False, 0)
+    def create_process_list(self):
+        proc = Popen(['ps', '-eo' ,'pid,args'], stdout=PIPE, stderr=PIPE)
+        stdout, notused = proc.communicate()
+        processes = re.split(r'\n', stdout.decode('utf-8'))
+        pids = []
+        commands = []
+        for process in processes[1:]:
+            if process:
+                pattern_pid = r'\s*(\d*)\s*\S[\s\S]*'
+                pattern_command = r'\s*\d*\s([\s\S]*)'
+                pid = re.findall(pattern_pid, process)
+                command = re.findall(pattern_command, process)
+                pids.append(int(pid[0]))
+                commands.append(command[0])
+                #print(pid[0], command[0])
+        return [pids, commands]
 
-        hpaned = Gtk.Paned()
-        hpaned.set_position(600)
-        master_box.add(hpaned)
-        
-        left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        left_box.set_size_request(250, -1)
-        hpaned.add1(left_box)
-        label = Gtk.Label(label='Left side is here...')
-        left_box.pack_start(label, False, True, 20)
-        right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        print("right box:   ", right_box)
-        right_box.set_size_request(250, -1)
-        hpaned.add2(right_box)
-        label = Gtk.Label(label="...and Right side is here (don't confuse)")
-        right_box.pack_start(label, False, True, 20)
-
-        def butt_click(args):
-            box, text = args
-            print(box, text)
-            label = Gtk.Label(label=text)
-            label = Gtk.Label(label="111")
-            right_box.pack_start(label, False, True, 0)
-            print(master_box)
-            master_box.pack_start(label, False, True, 0)
-
-        buttons=[]
-        for i in range(5):
-        	buttons.append(Gtk.Button(label = "Button {0}".format(i)))
-        	a = Callback(butt_click, (right_box, "Button {0}".format(i)))
-        	buttons[i].connect("clicked", a)
-        	button_box.pack_start(buttons[i], False, False, 0)
-
-        file_list = os.listdir(".")
-        #label = Gtk.Label(label=file_list)
-        #label.set_line_wrap(True)
-        #left_box.pack_start(label, False, True, 0)
-
-        dir_list = []
-        not_dir = []
-        for item in file_list:
-            if os.path.isdir(item):
-                dir_list.append([item, "folder"])
-            else:
-                not_dir.append([item, "file"])
-        dir_list.sort()
-        not_dir.sort()
-        new_file_list = dir_list + not_dir
-
-
-        updated_list = []
-        for item in new_file_list:
-            size = os.path.getsize(item[0])
-            datec = time.ctime(os.path.getctime(item[0]))
-            datem = time.ctime(os.path.getmtime(item[0]))
-            updated_list.append([item[0], item[1], size, datec, datem])
-
-        file_store = Gtk.ListStore(str, str, int, str, str)
-        for file_row in updated_list:
-            file_store.append(file_row)
-        model = file_store.filter_new()
+    def create_tree(self):
+        pids, commands = self.create_process_list()
+        store = Gtk.ListStore(int, str)
+        for pid, comm in zip(pids, commands):
+            store.append([pid, comm])
+        model = store.filter_new()
         treeview = Gtk.TreeView.new_with_model(model)
-#        renderer = Gtk.CellRendererText()
-#        column = Gtk.TreeViewColumn("file", Gtk.CellRendererText(), text=0)
-
-        column_names = ["file name", "type", "size", "created", "last changed"]
+        column_names = ["pid", "command"]
         for i, col_n in enumerate(column_names):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(col_n, Gtk.CellRendererText(), text=i)
             treeview.append_column(column)
-
-
-#        scrollable_treelist = Gtk.ScrolledWindow()
-#        left_box.pack_start(scrollable_treelist, True, True, 5)
-#        scrollable_treelist.add(treeview)
-
-        left_box.pack_start(treeview, False, True, 0)
+        return treeview
 
 
 
