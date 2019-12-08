@@ -70,7 +70,9 @@ class MainWindow(Gtk.Window):
         info_scrolled.add(self.process_info_label)
         right_box.add(info_box)
         self.process_select = self.process_treeview.get_selection()
-        self.process_select.connect("changed", self.process_selection_changed)
+        self.process_select.connect("changed", self.selection_changed)
+        self.param_select = self.keys_tree.get_selection()
+        self.param_select.connect("changed", self.selection_changed)
 
     def update_tree(self, button):
         self.process_scroll.remove(self.process_treeview)
@@ -80,19 +82,35 @@ class MainWindow(Gtk.Window):
         self.process_scroll.add(self.process_treeview)
         print('OK 3')
 
-    def process_selection_changed(self, selection):
+    def selection_changed(self, selection):
         model, treeiter = selection.get_selected()
         if treeiter:
-            self.selected_pid = model[treeiter][0]
+            print(type(treeiter))
+            if type(model[treeiter][0]) == str:
+                self.selected_key = model[treeiter][0]
+            elif type(model[treeiter][0]) == int:
+                self.selected_pid = model[treeiter][0]
             dict_info = psutil.Process(self.selected_pid).as_dict()
-            info = ''
-            for key in dict_info.keys():
-                info = '{0} {1}: {2}\n\n'.format(
-                    info, 
-                    key, 
-                    dict_info[key]
-                    )
-                self.process_info_label.set_text(info[:])
+            #print(type(dict_info))
+            #print(str(self.selected_key))
+            if self.selected_key == '(ALL)':
+                info = ''
+                for key in dict_info.keys():
+                    info = '{0} {1}: {2}\n\n'.format(
+                        info, 
+                        key, 
+                        dict_info[key]
+                        )
+            else:
+                #print(dict_info.keys())
+                print(type(dict_info))
+                print(type(self.selected_key))
+                print(dict_info[self.selected_key])
+                info = '{0}: {1}\n\n'.format(
+                        self.selected_key, 
+                        dict_info[self.selected_key]
+                        )
+            self.process_info_label.set_text(info[:])
 
     def kill_process(self, button):
         psutil.Process(self.selected_pid).kill()
