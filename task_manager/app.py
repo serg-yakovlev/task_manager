@@ -14,6 +14,7 @@ class MainWindow(Gtk.Window):
         self.connection = None
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_size_request(1000, 500)
+        self.selected_key = '(ALL)'
         master_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.add(master_box)
         hpaned = Gtk.Paned()
@@ -30,14 +31,14 @@ class MainWindow(Gtk.Window):
         applications_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.aplications_treeview = ApplicationTree()
         applications_scroll = Gtk.ScrolledWindow()
-        applications_scroll.set_size_request(300,500)
+        applications_scroll.set_size_request(400,500)
         applications_scroll.add(self.aplications_treeview)
         left_box.pack_start(applications_tree_box, False, True, 0)
         applications_tree_box.pack_start(applications_scroll, True, True, 0)
         process_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         right_box.pack_start(process_tree_box, False, True, 0)
         process_scroll = Gtk.ScrolledWindow()
-        process_scroll.set_size_request(700,220)
+        process_scroll.set_size_request(600,220)
         process_tree_box.pack_start(process_scroll, True, True, 0)
         self.process_treeview = ProcessTree()
         process_scroll.add(self.process_treeview)
@@ -85,7 +86,7 @@ class MainWindow(Gtk.Window):
     def selection_changed(self, selection):
         model, treeiter = selection.get_selected()
         if treeiter:
-            print(type(treeiter))
+            #print(type(treeiter))
             if type(model[treeiter][0]) == str:
                 self.selected_key = model[treeiter][0]
             elif type(model[treeiter][0]) == int:
@@ -102,10 +103,6 @@ class MainWindow(Gtk.Window):
                         dict_info[key]
                         )
             else:
-                #print(dict_info.keys())
-                print(type(dict_info))
-                print(type(self.selected_key))
-                print(dict_info[self.selected_key])
                 info = '{0}: {1}\n\n'.format(
                         self.selected_key, 
                         dict_info[self.selected_key]
@@ -117,8 +114,6 @@ class MainWindow(Gtk.Window):
 
 
 if __name__ == '__main__':
-
-    #print(dir(Gtk.Entry.connect.__name__))
     win = MainWindow()
     win.connect("destroy", Gtk.main_quit)
     win.show_all()

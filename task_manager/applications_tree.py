@@ -2,18 +2,18 @@ import gi
 import psutil
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
-
+import os
 
 class ApplicationTree(Gtk.TreeView):
 
     def __init__(self):
         applications = self.app_list()
-        store = Gtk.ListStore(str, float)
+        store = Gtk.ListStore(str, str, float)
         for app in applications:
             store.append(app)
         super().__init__(model = store.filter_new())
-        self.set_size_request(200,200)
-        column_names = ["application", "memory %"]
+        self.set_size_request(400,200)
+        column_names = ["path", ".exe", "memory %"]
         for i, col_n in enumerate(column_names):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(col_n, Gtk.CellRendererText(), text=i)
@@ -41,8 +41,12 @@ class ApplicationTree(Gtk.TreeView):
         applications.update({'(ALL)': full_mem})
         app_list = []
         for app in applications.keys():
-            app_list.append([app, applications[app]])
-        app_list.sort(key=lambda x: x[1], reverse=True)
+            app_list.append(
+                [os.path.split(app)[0],
+                os.path.split(app)[1],
+                applications[app]]
+                )
+        app_list.sort(key=lambda x: x[2], reverse=True)
         return app_list
 
 if __name__ == '__main__':
