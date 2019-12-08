@@ -15,6 +15,7 @@ class MainWindow(Gtk.Window):
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_size_request(1000, 500)
         self.selected_key = '(ALL)'
+        self.selected_pid = 1
         master_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.add(master_box)
         hpaned = Gtk.Paned()
@@ -37,11 +38,11 @@ class MainWindow(Gtk.Window):
         applications_tree_box.pack_start(applications_scroll, True, True, 0)
         process_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         right_box.pack_start(process_tree_box, False, True, 0)
-        process_scroll = Gtk.ScrolledWindow()
-        process_scroll.set_size_request(600,220)
-        process_tree_box.pack_start(process_scroll, True, True, 0)
+        self.process_scroll = Gtk.ScrolledWindow()
+        self.process_scroll.set_size_request(600,220)
+        process_tree_box.pack_start(self.process_scroll, True, True, 0)
         self.process_treeview = ProcessTree()
-        process_scroll.add(self.process_treeview)
+        self.process_scroll.add(self.process_treeview)
         button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         right_box.pack_end(button_box, False, True, 0)
         button_close = Gtk.Button(label="Close")
@@ -76,12 +77,13 @@ class MainWindow(Gtk.Window):
         self.param_select.connect("changed", self.selection_changed)
 
     def update_tree(self, button):
-        self.process_scroll.remove(self.process_treeview)
-        print('OK 1')
+        #self.process_scroll.remove(self.process_treeview)
+        #print('remove treeview - OK')
+        self.process_treeview.destroy()
         self.process_treeview = ProcessTree()
-        print('OK 2')
+        print('create new treeview - OK')
         self.process_scroll.add(self.process_treeview)
-        print('OK 3')
+        print('insert new treeview - OK')
 
     def selection_changed(self, selection):
         model, treeiter = selection.get_selected()
@@ -103,9 +105,18 @@ class MainWindow(Gtk.Window):
                         dict_info[key]
                         )
             else:
-                info = '{0}: {1}\n\n'.format(
+                if self.selected_key == 'ppid':
+                    parent_process = ' (parent process: {0})'.format(
+                        psutil.Process(
+                            dict_info['ppid']
+                            ).name()
+                        ) if self.selected_pid > 1 else '(None)'
+                else:
+                    parent_process = ''
+                info = '{0}: {1} {2}\n\n'.format(
                         self.selected_key, 
-                        dict_info[self.selected_key]
+                        dict_info[self.selected_key],
+                        parent_process,
                         )
             self.process_info_label.set_text(info[:])
 

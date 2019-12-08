@@ -41,8 +41,7 @@ class ProcessTree(Gtk.TreeView):
                 'name': proc_dict['name'],
                 'username': proc_dict['username'],
                 'file': e,
-                'memory': proc_dict['memory_percent'],
-                'mem_info': proc.memory_info()
+                'memory': proc_dict['memory_percent']
                 }
             processes.append(p)
         processes.sort(key=lambda x: x['memory'], reverse=True)
