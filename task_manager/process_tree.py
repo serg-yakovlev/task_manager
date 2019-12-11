@@ -2,22 +2,26 @@ import gi
 import psutil
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
+from threading import Thread
 
 
 class ProcessTree(Gtk.TreeView):
 
     def __init__(self):
-        processes = self.proc_list()
-        store = Gtk.ListStore(int, str, str, str, float)
-        for proc in processes:
-            store.append([
-                proc['id'],
-                proc['name'],
-                proc['username'],
-                proc['file'],
-                proc['memory']
-                ])
-        super().__init__(model = store.filter_new())
+        self.proc_list()
+
+        def proc_list_thread():
+            while True:
+                self.proc_list()
+
+        th =Thread(target = proc_list_thread)
+        th.start()
+        try:
+            store = self.store
+        except Exception:
+            self.store = Gtk.ListStore(int, str, str, str, float)
+            self.store = self.fill_store()
+        super().__init__(model = self.store.filter_new())
         self.set_size_request(600,200)
         column_names = ["pid", "name", "username", "application", "memory %"]
         for i, col_n in enumerate(column_names):
@@ -27,6 +31,22 @@ class ProcessTree(Gtk.TreeView):
             self.append_column(column)
             if col_n == "memory %":
                 column.set_max_width(50)
+
+    def fill_store(self):
+        self.processes = self.curr_proc_list
+        for proc in self.processes:
+            self.store.append([
+                proc['id'],
+                proc['name'],
+                proc['username'],
+                proc['file'],
+                proc['memory']
+                ])
+        return self.store
+
+    def clean_store(self):
+        if self.store:
+            self.store.clear()
 
     def proc_list(self):
         processes = []
@@ -45,7 +65,8 @@ class ProcessTree(Gtk.TreeView):
                 }
             processes.append(p)
         processes.sort(key=lambda x: x['memory'], reverse=True)
-        return processes
+        self.curr_proc_list = processes
+
 
 if __name__ == '__main__':
     w = Gtk.Window(title='Process List')

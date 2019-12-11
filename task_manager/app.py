@@ -77,13 +77,11 @@ class MainWindow(Gtk.Window):
         self.param_select.connect("changed", self.selection_changed)
 
     def update_tree(self, button):
-        #self.process_scroll.remove(self.process_treeview)
-        #print('remove treeview - OK')
-        self.process_treeview.destroy()
-        self.process_treeview = ProcessTree()
-        print('create new treeview - OK')
-        self.process_scroll.add(self.process_treeview)
-        print('insert new treeview - OK')
+        self.process_treeview.clean_store()
+#        print('clean - OK')
+        self.process_treeview.fill_store()
+#        print('create - OK')
+
 
     def selection_changed(self, selection):
         model, treeiter = selection.get_selected()
