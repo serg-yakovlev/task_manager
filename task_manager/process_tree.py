@@ -1,8 +1,11 @@
 import gi
 import psutil
+import copy
+import json
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
-from threading import Thread
+from multiprocessing import Process
+#from subprocess import Popen, PIPE
 
 
 class ProcessTree(Gtk.TreeView):
@@ -10,12 +13,13 @@ class ProcessTree(Gtk.TreeView):
     def __init__(self):
         self.proc_list()
 
-        def proc_list_thread():
+        def update_proc_list():
             while True:
                 self.proc_list()
 
-        th =Thread(target = proc_list_thread)
-        th.start()
+        p = Process(target=update_proc_list)
+        p.start()
+
         try:
             store = self.store
         except Exception:
@@ -33,8 +37,10 @@ class ProcessTree(Gtk.TreeView):
                 column.set_max_width(50)
 
     def fill_store(self):
-        self.processes = self.curr_proc_list
-        for proc in self.processes:
+        #self.proc_list()
+        with open('proc_list_json', 'r') as file:
+            processes = json.loads(file.read())
+        for proc in processes:
             self.store.append([
                 proc['id'],
                 proc['name'],
@@ -65,7 +71,9 @@ class ProcessTree(Gtk.TreeView):
                 }
             processes.append(p)
         processes.sort(key=lambda x: x['memory'], reverse=True)
-        self.curr_proc_list = processes
+        with open('proc_list_json', 'w') as file:
+            json.dump(processes, file)
+        #self.curr_proc_list = copy.deepcopy(processes)
 
 
 if __name__ == '__main__':

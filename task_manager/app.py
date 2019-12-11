@@ -48,12 +48,12 @@ class MainWindow(Gtk.Window):
         button_close = Gtk.Button(label="Close")
         button_close.connect("clicked", Gtk.main_quit)
         button_box.pack_start(button_close, True, True, 0)
-        button_update_tree = ProcessTreeUpdateButton()
-        button_update_tree.connect("clicked", self.update_tree)
-        button_box.pack_start(button_update_tree, True, True, 0)
-        button_kill = ProcessKillButton()
-        button_kill.connect("clicked", self.kill_process)
-        button_box.pack_start(button_kill, True, True, 0)
+        self.button_update_proc_tree = ProcessTreeUpdateButton()
+        self.button_update_proc_tree.connect("clicked", self.update_proc_tree)
+        button_box.pack_start(self.button_update_proc_tree, True, True, 0)
+        self.button_kill = ProcessKillButton()
+        self.button_kill.connect("clicked", self.kill_process)
+        button_box.pack_start(self.button_kill, True, True, 0)
         self.process_info_label = Gtk.Label()
         self.process_info_label.set_size_request(430,210)
         self.process_info_label.set_selectable(True)
@@ -76,22 +76,26 @@ class MainWindow(Gtk.Window):
         self.param_select = self.keys_tree.get_selection()
         self.param_select.connect("changed", self.selection_changed)
 
-    def update_tree(self, button):
+    def update_proc_tree(self, button):
         self.process_treeview.clean_store()
 #        print('clean - OK')
         self.process_treeview.fill_store()
 #        print('create - OK')
 
-
     def selection_changed(self, selection):
         model, treeiter = selection.get_selected()
         if treeiter:
+            #for item in model:
+                #print(item)
             #print(type(treeiter))
             if type(model[treeiter][0]) == str:
                 self.selected_key = model[treeiter][0]
             elif type(model[treeiter][0]) == int:
                 self.selected_pid = model[treeiter][0]
+            #print(self.selected_pid)
+            #print(psutil.Process(self.selected_pid))
             dict_info = psutil.Process(self.selected_pid).as_dict()
+            #print(dict_info['name'])
             #print(type(dict_info))
             #print(str(self.selected_key))
             if self.selected_key == '(ALL)':
@@ -117,9 +121,21 @@ class MainWindow(Gtk.Window):
                         parent_process,
                         )
             self.process_info_label.set_text(info[:])
+            # print(self.selected_pid)
 
     def kill_process(self, button):
+        button.set_label(label='Process is killing')
+        name = psutil.Process(self.selected_pid).name()
+        #button.set_label(
+        #    label='Killing process {0} {1}...'.format(self.selected_pid, name)
+        #    )
         psutil.Process(self.selected_pid).kill()
+        self.update_proc_tree(self.button_update_proc_tree)
+        button.set_label(label='Kill process')
+        self.process_info_label.set_text(
+            'Process {0} {1} killed.'.format(self.selected_pid, name)
+            )
+
 
 
 if __name__ == '__main__':
