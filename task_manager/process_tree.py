@@ -5,26 +5,19 @@ import json
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
 from multiprocessing import Process
+from threading import Thread, Lock
+import time
+
 #from subprocess import Popen, PIPE
 
 
 class ProcessTree(Gtk.TreeView):
 
     def __init__(self):
+        LOCK = Lock()
         self.proc_list()
-
-        def update_proc_list():
-            while True:
-                self.proc_list()
-
-        p = Process(target=update_proc_list)
-        p.start()
-
-        try:
-            store = self.store
-        except Exception:
-            self.store = Gtk.ListStore(int, str, str, str, float)
-            self.store = self.fill_store()
+        self.store = Gtk.ListStore(int, str, str, str, float)
+        self.fill_store()
         super().__init__(model = self.store.filter_new())
         self.set_size_request(600,200)
         column_names = ["pid", "name", "username", "application", "memory %"]
@@ -36,25 +29,69 @@ class ProcessTree(Gtk.TreeView):
             if col_n == "memory %":
                 column.set_max_width(50)
 
+        def update_proc_list():
+            #nr = 1
+            while True:
+                time.sleep(5)
+                with LOCK:
+                    self.proc_list()
+                #print(nr)
+                #nr += 1
+
+        p = Process(target=update_proc_list)
+        p.start()
+
+        def update_store():
+            while True:
+                time.sleep(1)
+                with LOCK:
+                    self.fill_store()
+
+        th = Thread(target=update_store)
+        th.start()
+
     def fill_store(self):
-        #self.proc_list()
-        with open('proc_list_json', 'r') as file:
-            processes = json.loads(file.read())
-        for proc in processes:
-            self.store.append([
-                proc['id'],
-                proc['name'],
-                proc['username'],
-                proc['file'],
-                proc['memory']
-                ])
-        return self.store
+        print('fill_store_start')
+        if self.store:
+            self.store.clear()
+            print('store clear')
+        try:
+            with open('proc_list_json', 'r') as file:
+                processes = json.loads(file.read())
+            print('json load')
+        except Exception as e:
+            print(e)
+        else:
+            time.sleep(1)
+            i = 0
+            for proc in processes:
+                time.sleep(0)
+                print('append start - proc', i)
+                #print(
+                #    proc['id'],
+                #    proc['name'],
+                #    proc['username'],
+                #    proc['file'],
+                #    proc['memory']
+                #    )
+                self.store.append([
+                    proc['id'],
+                    proc['name'],
+                    proc['username'],
+                    proc['file'],
+                    proc['memory']
+                    ])
+                print('append finished - proc', i)
+                i += 1
+        print('fill_store_finish\n\n')
+        # return self.store
 
     def clean_store(self):
         if self.store:
             self.store.clear()
 
     def proc_list(self):
+        print('iter_process')
         processes = []
         for proc in psutil.process_iter():
             try:
@@ -83,7 +120,7 @@ if __name__ == '__main__':
     master_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
     w.add(master_box)
     scrollable_treelist = Gtk.ScrolledWindow()
-    scrollable_treelist.set_size_request(570,470)
+    scrollable_treelist.set_size_request(1000,470)
     master_box.add(scrollable_treelist)
     scrollable_treelist.add(t)
     w.connect("destroy", Gtk.main_quit)
