@@ -79,20 +79,21 @@ class MainWindow(Gtk.Window):
         self.param_select.connect("changed", self.selection_changed)
         self.app_select = self.applications_treeview.get_selection()
         self.app_select.connect("changed", self.app_selection_changed)
-        GLib.timeout_add_seconds(1, self.process_treeview.fill_store)
+
+        def proc_tree_update():
+            self.process_treeview.fill_store(self.selected_app)
+            return True
+
+        GLib.timeout_add_seconds(1, proc_tree_update)
         GLib.timeout_add_seconds(1, self.applications_treeview.fill_store)
 
-#    def update_proc_tree(self, button):
-#        self.process_treeview.clean_store()
-#        print('clean - OK')
-#        self.process_treeview.fill_store()
-#        print('create - OK')
+
     def app_selection_changed(self, selection):
         if self.applications_treeview.updating == True:
             return
         model, treeiter = selection.get_selected()
         if treeiter:
-            self.selected_app = model[treeiter][1]
+            self.selected_app = model[treeiter][0]+'/'+model[treeiter][1]
             print(self.selected_app)
 
     def freeze(self, button):

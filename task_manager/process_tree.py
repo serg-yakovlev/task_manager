@@ -51,17 +51,22 @@ class ProcessTree(Gtk.TreeView):
         #th = Thread(target=update_store)
         #th.start()
 
-    def fill_store(self):
+    def fill_store(self, app='(ALL)'):
         if self.frozen == True:
             return True
         self.updating = True
         try:
             with open('proc_list_json', 'r') as file:
-                processes = json.loads(file.read())
+                pr = json.loads(file.read())
             #print('json load')
         except Exception as e:
             print('Exception while load proc_json:', e)
         else:
+            #for p in pr:
+            #    print(p['file'])
+            processes = pr if app == '/(ALL)' else [p for p in pr if p['file']==app]
+            #print(app)
+            #print(processes)
             if self.store:
                 self.store.clear()
             if processes == []:
