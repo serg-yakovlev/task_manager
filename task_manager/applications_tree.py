@@ -2,16 +2,21 @@ import gi
 import psutil
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
+from multiprocessing import Process
+from threading import Thread, Lock
 import os
+import json
 
 class ApplicationTree(Gtk.TreeView):
 
     def __init__(self):
+        LOCK = Lock()
+        self.updating = False
         applications = self.app_list()
-        store = Gtk.ListStore(str, str, float)
+        self.store = Gtk.ListStore(str, str, float)
         for app in applications:
-            store.append(app)
-        super().__init__(model = store.filter_new())
+            self.store.append(app)
+        super().__init__(model = self.store)
         self.set_size_request(400,200)
         column_names = ["path", ".exe", "memory %"]
         for i, col_n in enumerate(column_names):
@@ -21,6 +26,34 @@ class ApplicationTree(Gtk.TreeView):
             self.append_column(column)
             if col_n == "memory %":
                 column.set_max_width(50)
+
+        def update_app_list():
+            #nr = 1
+            while True:
+                #time.sleep(1)
+                with LOCK:
+                    self.app_list()
+                #print(nr)
+                #nr += 1
+
+        p = Process(target=update_app_list)
+        p.start()
+
+
+    def fill_store(self):
+        self.updating = True
+        try:
+            with open('app_list_json', 'r') as file:
+                applications = json.loads(file.read())
+            #print('json load')
+        except Exception as e:
+            print('Exception while load app_json:', e)
+        else:
+            self.store.clear()
+            for app in applications:
+                self.store.append(app)
+        self.updating = False
+        return True
 
     def app_list(self):
         #applications = [proc.exe() for proc in psutil.process_iter() if proc.exe()]
@@ -47,6 +80,8 @@ class ApplicationTree(Gtk.TreeView):
                 applications[app]]
                 )
         app_list.sort(key=lambda x: x[2], reverse=True)
+        with open('app_list_json', 'w') as file:
+            json.dump(app_list, file)
         return app_list
 
 if __name__ == '__main__':

@@ -15,6 +15,7 @@ class ProcessTree(Gtk.TreeView):
 
     def __init__(self):
         LOCK = Lock()
+        self.frozen = False
         self.proc_list()
         self.store = Gtk.ListStore(int, str, str, str, float)
         self.fill_store()
@@ -32,7 +33,7 @@ class ProcessTree(Gtk.TreeView):
         def update_proc_list():
             #nr = 1
             while True:
-                time.sleep(5)
+                #time.sleep(1)
                 with LOCK:
                     self.proc_list()
                 #print(nr)
@@ -41,32 +42,35 @@ class ProcessTree(Gtk.TreeView):
         p = Process(target=update_proc_list)
         p.start()
 
-        def update_store():
-            while True:
-                time.sleep(1)
-                with LOCK:
-                    self.fill_store()
+        #def update_store():
+        #    while True:
+        #        time.sleep(1)
+        #        with LOCK:
+        #            self.fill_store()
 
-        th = Thread(target=update_store)
-        th.start()
+        #th = Thread(target=update_store)
+        #th.start()
 
     def fill_store(self):
-        print('fill_store_start')
-        if self.store:
-            self.store.clear()
-            print('store clear')
+        if self.frozen == True:
+            return True
+        self.updating = True
         try:
             with open('proc_list_json', 'r') as file:
                 processes = json.loads(file.read())
-            print('json load')
+            #print('json load')
         except Exception as e:
-            print(e)
+            print('Exception while load proc_json:', e)
         else:
-            time.sleep(1)
-            i = 0
+            if self.store:
+                self.store.clear()
+            if processes == []:
+                return True
+            #time.sleep(1)
+            #i = 0
             for proc in processes:
-                time.sleep(0)
-                print('append start - proc', i)
+                #time.sleep(0)
+                #print('append start - proc', i)
                 #print(
                 #    proc['id'],
                 #    proc['name'],
@@ -81,17 +85,18 @@ class ProcessTree(Gtk.TreeView):
                     proc['file'],
                     proc['memory']
                     ])
-                print('append finished - proc', i)
-                i += 1
-        print('fill_store_finish\n\n')
-        # return self.store
+                #print('append finished - proc', i)
+                #i += 1
+        #print('fill_store_finish\n\n')
+        self.updating = False
+        return True
 
     def clean_store(self):
         if self.store:
             self.store.clear()
 
     def proc_list(self):
-        print('iter_process')
+        #print('iter_process')
         processes = []
         for proc in psutil.process_iter():
             try:

@@ -11,3 +11,7 @@ class ProcessKillButton(Gtk.Button):
 class ProcessTreeUpdateButton(Gtk.Button):
     def __init__(self):
         super().__init__(label = 'Update process tree')
+
+class FreezeButton(Gtk.Button):
+    def __init__(self):
+        super().__init__(label = 'Freeze')

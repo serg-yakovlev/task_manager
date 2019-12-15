@@ -1,10 +1,10 @@
 import gi
 import psutil
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GdkPixbuf
+from gi.repository import Gtk, GdkPixbuf, GLib
 from process_tree import ProcessTree
 from applications_tree import ApplicationTree
-from buttons import ProcessKillButton, ProcessTreeUpdateButton
+from buttons import ProcessKillButton, FreezeButton 
 from info_keys_tree import InfoTree
 
 class MainWindow(Gtk.Window):
@@ -30,10 +30,10 @@ class MainWindow(Gtk.Window):
         hpaned.add1(left_box)
         hpaned.add2(right_box)
         applications_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.aplications_treeview = ApplicationTree()
+        self.applications_treeview = ApplicationTree()
         applications_scroll = Gtk.ScrolledWindow()
         applications_scroll.set_size_request(400,500)
-        applications_scroll.add(self.aplications_treeview)
+        applications_scroll.add(self.applications_treeview)
         left_box.pack_start(applications_tree_box, False, True, 0)
         applications_tree_box.pack_start(applications_scroll, True, True, 0)
         process_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -48,9 +48,11 @@ class MainWindow(Gtk.Window):
         button_close = Gtk.Button(label="Close")
         button_close.connect("clicked", Gtk.main_quit)
         button_box.pack_start(button_close, True, True, 0)
-        self.button_update_proc_tree = ProcessTreeUpdateButton()
-        self.button_update_proc_tree.connect("clicked", self.update_proc_tree)
-        button_box.pack_start(self.button_update_proc_tree, True, True, 0)
+        #self.button_update_proc_tree = ProcessTreeUpdateButton()
+        #self.button_update_proc_tree.connect("clicked", self.update_proc_tree)
+        self.freeze_button = FreezeButton()
+        self.freeze_button.connect('clicked', self.freeze)
+        button_box.pack_start(self.freeze_button, True, True, 0)
         self.button_kill = ProcessKillButton()
         self.button_kill.connect("clicked", self.kill_process)
         button_box.pack_start(self.button_kill, True, True, 0)
@@ -75,14 +77,31 @@ class MainWindow(Gtk.Window):
         self.process_select.connect("changed", self.selection_changed)
         self.param_select = self.keys_tree.get_selection()
         self.param_select.connect("changed", self.selection_changed)
+        self.app_select = self.applications_treeview.get_selection()
+        self.app_select.connect("changed", self.app_selection_changed)
+        GLib.timeout_add_seconds(1, self.process_treeview.fill_store)
+        GLib.timeout_add_seconds(1, self.applications_treeview.fill_store)
 
-    def update_proc_tree(self, button):
-        self.process_treeview.clean_store()
+#    def update_proc_tree(self, button):
+#        self.process_treeview.clean_store()
 #        print('clean - OK')
-        self.process_treeview.fill_store()
+#        self.process_treeview.fill_store()
 #        print('create - OK')
+    def app_selection_changed(self, selection):
+        if self.applications_treeview.updating == True:
+            return
+        model, treeiter = selection.get_selected()
+        if treeiter:
+            self.selected_app = model[treeiter][1]
+            print(self.selected_app)
+
+    def freeze(self, button):
+        self.process_treeview.frozen = True if self.process_treeview.frozen == False else False
+        button.set_label(label='Continue' if self.process_treeview.frozen == True else 'Freeze')
 
     def selection_changed(self, selection):
+        if self.process_treeview.updating == True:
+            return
         model, treeiter = selection.get_selected()
         if treeiter:
             #for item in model:
@@ -92,6 +111,7 @@ class MainWindow(Gtk.Window):
                 self.selected_key = model[treeiter][0]
             elif type(model[treeiter][0]) == int:
                 self.selected_pid = model[treeiter][0]
+                print("PID", self.selected_pid, "selected")
             #print(self.selected_pid)
             #print(psutil.Process(self.selected_pid))
             dict_info = psutil.Process(self.selected_pid).as_dict()
@@ -121,20 +141,25 @@ class MainWindow(Gtk.Window):
                         parent_process,
                         )
             self.process_info_label.set_text(info[:])
-            # print(self.selected_pid)
 
     def kill_process(self, button):
-        button.set_label(label='Process is killing')
-        name = psutil.Process(self.selected_pid).name()
-        #button.set_label(
-        #    label='Killing process {0} {1}...'.format(self.selected_pid, name)
-        #    )
-        psutil.Process(self.selected_pid).kill()
-        self.update_proc_tree(self.button_update_proc_tree)
-        button.set_label(label='Kill process')
-        self.process_info_label.set_text(
-            'Process {0} {1} killed.'.format(self.selected_pid, name)
-            )
+        pid = self.selected_pid
+        name = psutil.Process(pid).name()
+        try:
+            psutil.Process(pid).kill()
+        except Exception as e:
+            print(e)
+        else:
+            button.set_label(label='Process is killing')
+            self.process_treeview.frozen = False
+            self.process_treeview.fill_store()
+            button.set_label(label='Kill process')
+            self.process_info_label.set_text(
+                'Process {0} {1} killed.'.format(pid, name)
+                )
+        self.selected_pid = 1
+        self.freeze_button.set_label('Freeze')
+        print(self.selected_pid)
 
 
 
