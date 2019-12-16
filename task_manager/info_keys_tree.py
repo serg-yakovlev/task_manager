@@ -10,6 +10,7 @@ class InfoTree(Gtk.TreeView):
         info_keys = psutil.Process(pid).as_dict().keys()
         keys = [key for key in info_keys]
         keys.sort()
+        self.selected_key = 'name'
         store = Gtk.ListStore(str)
         store.append(['(ALL)'])
         for key in keys:

@@ -6,12 +6,15 @@ from multiprocessing import Process
 from threading import Thread, Lock
 import os
 import json
+from datetime import datetime
+
 
 class ApplicationTree(Gtk.TreeView):
 
     def __init__(self):
         LOCK = Lock()
         self.updating = False
+        self.frozen = False
         applications = self.app_list()
         self.store = Gtk.ListStore(str, str, float)
         for app in applications:
@@ -39,7 +42,6 @@ class ApplicationTree(Gtk.TreeView):
         p = Process(target=update_app_list)
         p.start()
 
-
     def fill_store(self):
         self.updating = True
         try:
@@ -47,7 +49,7 @@ class ApplicationTree(Gtk.TreeView):
                 applications = json.loads(file.read())
             #print('json load')
         except Exception as e:
-            print('Exception while load app_json:', e)
+            print(datetime.now(),'Exception while load app_json:', e)
         else:
             self.store.clear()
             for app in applications:

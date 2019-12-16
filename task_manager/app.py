@@ -7,6 +7,7 @@ from applications_tree import ApplicationTree
 from buttons import ProcessKillButton, FreezeButton 
 from info_keys_tree import InfoTree
 
+
 class MainWindow(Gtk.Window):
 
     def __init__(self):
@@ -14,8 +15,6 @@ class MainWindow(Gtk.Window):
         self.connection = None
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_size_request(1000, 500)
-        self.selected_key = '(ALL)'
-        self.selected_pid = 1
         master_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         self.add(master_box)
         hpaned = Gtk.Paned()
@@ -23,10 +22,10 @@ class MainWindow(Gtk.Window):
         master_box.add(hpaned)
         left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        left_header = Gtk.Label(label='APPLICATIONS')
-        right_header = Gtk.Label(label='PROCESSES')
-        left_box.pack_start(left_header, False, True, 0)
-        right_box.pack_start(right_header, False, True, 0)
+        app_header = Gtk.Label(label='APPLICATIONS')
+        self.proc_header = Gtk.Label(label='PROCESSES')
+        left_box.pack_start(app_header, False, True, 0)
+        right_box.pack_start(self.proc_header, False, True, 0)
         hpaned.add1(left_box)
         hpaned.add2(right_box)
         applications_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -60,10 +59,11 @@ class MainWindow(Gtk.Window):
         self.process_info_label.set_size_request(430,210)
         self.process_info_label.set_selectable(True)
         self.process_info_label.set_line_wrap(True)
-        info_header = Gtk.Label(label='DETAILED PROCESS INFO')
-        right_box.pack_start(info_header, True, True, 0)
+        self.info_header = Gtk.Label(label='DETAILED PROCESS INFO')
+        right_box.pack_start(self.info_header, True, True, 0)
         keys_scrolled = Gtk.ScrolledWindow()
         self.keys_tree = InfoTree(1)
+        #self.keys_tree.selected_key = 'name'
         keys_scrolled.add(self.keys_tree)
         info_scrolled = Gtk.ScrolledWindow()
         info_scrolled.set_size_request(430,210)
@@ -84,21 +84,40 @@ class MainWindow(Gtk.Window):
             self.process_treeview.fill_store(self.selected_app)
             return True
 
-        GLib.timeout_add_seconds(1, proc_tree_update)
-        GLib.timeout_add_seconds(1, self.applications_treeview.fill_store)
+        def app_tree_update():
+            self.applications_treeview.fill_store()
+            return True
 
+        GLib.timeout_add_seconds(1, proc_tree_update)
+        GLib.timeout_add_seconds(1, app_tree_update)
+
+    def freeze(self, button):
+        self.process_treeview.frozen = True if self.process_treeview.frozen == False else False
+        self.applications_treeview.frozen = True if self.applications_treeview.frozen == False else False
+        button.set_label(label='Continue' if self.process_treeview.frozen == True else 'Freeze')
 
     def app_selection_changed(self, selection):
         if self.applications_treeview.updating == True:
             return
         model, treeiter = selection.get_selected()
-        if treeiter:
-            self.selected_app = model[treeiter][0]+'/'+model[treeiter][1]
-            print(self.selected_app)
-
-    def freeze(self, button):
-        self.process_treeview.frozen = True if self.process_treeview.frozen == False else False
-        button.set_label(label='Continue' if self.process_treeview.frozen == True else 'Freeze')
+        #if treeiter:
+        self.selected_app = model[treeiter][0]+'/'+model[treeiter][1]
+        self.proc_header.set_text('PROCESSES ({0})'.format(self.selected_app))
+        self.process_treeview.need_to_change_labels = True
+        self.process_treeview.fill_store(self.selected_app)
+        name = psutil.Process(
+            self.process_treeview.selected_pid
+            ).as_dict(attrs=['name'])['name']
+        self.info_header.set_text(
+            'DETAILED PROCESS INFO ({0} {1})'.format(
+                self.process_treeview.selected_pid,
+                name)
+            )
+        self.process_info_label.set_text(
+            'name: {0}\n\n'.format(
+                name)
+            )
+        print(self.selected_app)
 
     def selection_changed(self, selection):
         if self.process_treeview.updating == True:
@@ -109,17 +128,19 @@ class MainWindow(Gtk.Window):
                 #print(item)
             #print(type(treeiter))
             if type(model[treeiter][0]) == str:
-                self.selected_key = model[treeiter][0]
+                self.keys_tree.selected_key = model[treeiter][0]
+                new_name = None
             elif type(model[treeiter][0]) == int:
-                self.selected_pid = model[treeiter][0]
-                print("PID", self.selected_pid, "selected")
-            #print(self.selected_pid)
-            #print(psutil.Process(self.selected_pid))
-            dict_info = psutil.Process(self.selected_pid).as_dict()
-            #print(dict_info['name'])
-            #print(type(dict_info))
-            #print(str(self.selected_key))
-            if self.selected_key == '(ALL)':
+                self.process_treeview.selected_pid = model[treeiter][0]
+                print("PID", self.process_treeview.selected_pid, "selected")
+                self.info_header.set_text(
+                    'DETAILED PROCESS INFO ({0} {1})'.format(
+                        self.process_treeview.selected_pid,
+                        model[treeiter][1]
+                        )
+                    )
+            dict_info = psutil.Process(self.process_treeview.selected_pid).as_dict()
+            if self.keys_tree.selected_key == '(ALL)':
                 info = ''
                 for key in dict_info.keys():
                     info = '{0} {1}: {2}\n\n'.format(
@@ -128,39 +149,40 @@ class MainWindow(Gtk.Window):
                         dict_info[key]
                         )
             else:
-                if self.selected_key == 'ppid':
+                if self.keys_tree.selected_key == 'ppid':
                     parent_process = ' (parent process: {0})'.format(
                         psutil.Process(
                             dict_info['ppid']
                             ).name()
-                        ) if self.selected_pid > 1 else '(None)'
+                        ) if self.process_treeview.selected_pid > 1 else '(None)'
                 else:
                     parent_process = ''
                 info = '{0}: {1} {2}\n\n'.format(
-                        self.selected_key, 
-                        dict_info[self.selected_key],
+                        self.keys_tree.selected_key, 
+                        dict_info[self.keys_tree.selected_key],
                         parent_process,
                         )
             self.process_info_label.set_text(info[:])
 
     def kill_process(self, button):
-        pid = self.selected_pid
+        pid = self.process_treeview.selected_pid
         name = psutil.Process(pid).name()
         try:
+            self.process_treeview.selected_pid = 1
             psutil.Process(pid).kill()
         except Exception as e:
             print(e)
         else:
-            button.set_label(label='Process is killing')
-            self.process_treeview.frozen = False
-            self.process_treeview.fill_store()
-            button.set_label(label='Kill process')
+ #           button.set_label(label='Process is killing')
+ #           self.process_treeview.frozen = False
+ #           self.process_treeview.fill_store()
+ #           button.set_label(label='Kill process')
             self.process_info_label.set_text(
                 'Process {0} {1} killed.'.format(pid, name)
                 )
-        self.selected_pid = 1
-        self.freeze_button.set_label('Freeze')
-        print(self.selected_pid)
+ #       self.process_treeview.selected_pid = 1
+ #       self.freeze_button.set_label('Freeze')
+ #       print(self.process_treeview.selected_pid)
 
 
 

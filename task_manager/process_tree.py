@@ -6,8 +6,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
 from multiprocessing import Process
 from threading import Thread, Lock
-import time
-
+from datetime import datetime
 #from subprocess import Popen, PIPE
 
 
@@ -16,6 +15,8 @@ class ProcessTree(Gtk.TreeView):
     def __init__(self):
         LOCK = Lock()
         self.frozen = False
+        self.need_to_change_labels = False
+        self.selected_pid = 1
         self.proc_list()
         self.store = Gtk.ListStore(int, str, str, str, float)
         self.fill_store()
@@ -60,19 +61,23 @@ class ProcessTree(Gtk.TreeView):
                 pr = json.loads(file.read())
             #print('json load')
         except Exception as e:
-            print('Exception while load proc_json:', e)
+            print(datetime.now(), 'Exception while load proc_json:', e)
         else:
             #for p in pr:
             #    print(p['file'])
             processes = pr if app == '/(ALL)' else [p for p in pr if p['file']==app]
+            if processes == []:
+                self.updating = False
+                return True
+            #print(self.need_to_change_labels, processes[0])
+            if self.need_to_change_labels == True:
+                self.selected_pid = processes[0]['id']
+            self.need_to_change_labels = False
             #print(app)
             #print(processes)
-            if self.store:
-                self.store.clear()
-            if processes == []:
-                return True
             #time.sleep(1)
             #i = 0
+            self.store.clear()
             for proc in processes:
                 #time.sleep(0)
                 #print('append start - proc', i)
@@ -90,9 +95,11 @@ class ProcessTree(Gtk.TreeView):
                     proc['file'],
                     proc['memory']
                     ])
+                #print('append')
                 #print('append finished - proc', i)
                 #i += 1
         #print('fill_store_finish\n\n')
+        #print('END')
         self.updating = False
         return True
 
