@@ -1,12 +1,12 @@
 import gi
 import psutil
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GdkPixbuf
 from multiprocessing import Process
-from threading import Thread, Lock
+from threading import Lock
 import os
 import json
 from datetime import datetime
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
 
 
 class ApplicationTree(Gtk.TreeView):
@@ -19,11 +19,10 @@ class ApplicationTree(Gtk.TreeView):
         self.store = Gtk.ListStore(str, str, float)
         for app in applications:
             self.store.append(app)
-        super().__init__(model = self.store)
-        self.set_size_request(400,200)
+        super().__init__(model=self.store)
+        self.set_size_request(400, 200)
         column_names = ["path", ".exe", "memory %"]
         for i, col_n in enumerate(column_names):
-            renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(col_n, Gtk.CellRendererText(), text=i)
             column.set_resizable(True)
             self.append_column(column)
@@ -31,13 +30,9 @@ class ApplicationTree(Gtk.TreeView):
                 column.set_max_width(50)
 
         def update_app_list():
-            #nr = 1
             while True:
-                #time.sleep(1)
                 with LOCK:
                     self.app_list()
-                #print(nr)
-                #nr += 1
 
         p = Process(target=update_app_list)
         p.start()
@@ -47,9 +42,8 @@ class ApplicationTree(Gtk.TreeView):
         try:
             with open('app_list_json', 'r') as file:
                 applications = json.loads(file.read())
-            #print('json load')
         except Exception as e:
-            print(datetime.now(),'Exception while load app_json:', e)
+            print(datetime.now(), 'Exception while load app_json:', e)
         else:
             self.store.clear()
             for app in applications:
@@ -58,7 +52,6 @@ class ApplicationTree(Gtk.TreeView):
         return True
 
     def app_list(self):
-        #applications = [proc.exe() for proc in psutil.process_iter() if proc.exe()]
         applications = {}
         full_mem = 0
         for proc in psutil.process_iter():
@@ -78,13 +71,14 @@ class ApplicationTree(Gtk.TreeView):
         for app in applications.keys():
             app_list.append(
                 [os.path.split(app)[0],
-                os.path.split(app)[1],
-                applications[app]]
-                )
+                 os.path.split(app)[1],
+                 applications[app]]
+            )
         app_list.sort(key=lambda x: x[2], reverse=True)
         with open('app_list_json', 'w') as file:
             json.dump(app_list, file)
         return app_list
+
 
 if __name__ == '__main__':
     w = Gtk.Window(title='application List')
@@ -93,7 +87,7 @@ if __name__ == '__main__':
     master_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
     w.add(master_box)
     scrollable_treelist = Gtk.ScrolledWindow()
-    scrollable_treelist.set_size_request(570,470)
+    scrollable_treelist.set_size_request(570, 470)
     master_box.add(scrollable_treelist)
     scrollable_treelist.add(t)
     w.connect("destroy", Gtk.main_quit)

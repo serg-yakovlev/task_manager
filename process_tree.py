@@ -1,13 +1,11 @@
 import gi
 import psutil
-import copy
 import json
+from multiprocessing import Process
+from threading import Lock
+from datetime import datetime
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
-from multiprocessing import Process
-from threading import Thread, Lock
-from datetime import datetime
-#from subprocess import Popen, PIPE
 
 
 class ProcessTree(Gtk.TreeView):
@@ -20,11 +18,10 @@ class ProcessTree(Gtk.TreeView):
         self.proc_list()
         self.store = Gtk.ListStore(int, str, str, str, float)
         self.fill_store()
-        super().__init__(model = self.store.filter_new())
-        self.set_size_request(600,200)
+        super().__init__(model=self.store.filter_new())
+        self.set_size_request(600, 200)
         column_names = ["pid", "name", "username", "application", "memory %"]
         for i, col_n in enumerate(column_names):
-            renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(col_n, Gtk.CellRendererText(), text=i)
             column.set_resizable(True)
             self.append_column(column)
@@ -32,74 +29,41 @@ class ProcessTree(Gtk.TreeView):
                 column.set_max_width(50)
 
         def update_proc_list():
-            #nr = 1
             while True:
-                #time.sleep(1)
+                # time.sleep(1)
                 with LOCK:
                     self.proc_list()
-                #print(nr)
-                #nr += 1
 
         p = Process(target=update_proc_list)
         p.start()
 
-        #def update_store():
-        #    while True:
-        #        time.sleep(1)
-        #        with LOCK:
-        #            self.fill_store()
-
-        #th = Thread(target=update_store)
-        #th.start()
-
     def fill_store(self, app='(ALL)'):
-        if self.frozen == True:
+        if self.frozen:
             return True
         self.updating = True
         try:
             with open('proc_list_json', 'r') as file:
                 pr = json.loads(file.read())
-            #print('json load')
         except Exception as e:
             print(datetime.now(), 'Exception while load proc_json:', e)
         else:
-            #for p in pr:
-            #    print(p['file'])
-            processes = pr if app == '/(ALL)' else [p for p in pr if p['file']==app]
+            processes = pr if app == '/(ALL)' else [
+                p for p in pr if p['file'] == app]
             if processes == []:
                 self.updating = False
                 return True
-            #print(self.need_to_change_labels, processes[0])
-            if self.need_to_change_labels == True:
+            if self.need_to_change_labels:
                 self.selected_pid = processes[0]['id']
             self.need_to_change_labels = False
-            #print(app)
-            #print(processes)
-            #time.sleep(1)
-            #i = 0
             self.store.clear()
             for proc in processes:
-                #time.sleep(0)
-                #print('append start - proc', i)
-                #print(
-                #    proc['id'],
-                #    proc['name'],
-                #    proc['username'],
-                #    proc['file'],
-                #    proc['memory']
-                #    )
                 self.store.append([
                     proc['id'],
                     proc['name'],
                     proc['username'],
                     proc['file'],
                     proc['memory']
-                    ])
-                #print('append')
-                #print('append finished - proc', i)
-                #i += 1
-        #print('fill_store_finish\n\n')
-        #print('END')
+                ])
         self.updating = False
         return True
 
@@ -108,7 +72,7 @@ class ProcessTree(Gtk.TreeView):
             self.store.clear()
 
     def proc_list(self):
-        #print('iter_process')
+        # print('iter_process')
         processes = []
         for proc in psutil.process_iter():
             try:
@@ -122,12 +86,11 @@ class ProcessTree(Gtk.TreeView):
                 'username': proc_dict['username'],
                 'file': e,
                 'memory': proc_dict['memory_percent']
-                }
+            }
             processes.append(p)
         processes.sort(key=lambda x: x['memory'], reverse=True)
         with open('proc_list_json', 'w') as file:
             json.dump(processes, file)
-        #self.curr_proc_list = copy.deepcopy(processes)
 
 
 if __name__ == '__main__':
@@ -137,7 +100,7 @@ if __name__ == '__main__':
     master_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
     w.add(master_box)
     scrollable_treelist = Gtk.ScrolledWindow()
-    scrollable_treelist.set_size_request(1000,470)
+    scrollable_treelist.set_size_request(1000, 470)
     master_box.add(scrollable_treelist)
     scrollable_treelist.add(t)
     w.connect("destroy", Gtk.main_quit)
