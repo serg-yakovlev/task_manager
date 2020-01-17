@@ -27,6 +27,8 @@ class ProcessTree(Gtk.TreeView):
             self.append_column(column)
             if col_n == "memory %":
                 column.set_max_width(50)
+        self.set_cursor(0, self.get_column(0))
+        self.proc_cursor = self.get_cursor()
 
         def update_proc_list():
             while True:
@@ -45,7 +47,8 @@ class ProcessTree(Gtk.TreeView):
             with open('proc_list_json', 'r') as file:
                 pr = json.loads(file.read())
         except Exception as e:
-            print(datetime.now(), 'Exception while load proc_json:', e)
+            pass
+            #print(datetime.now(), 'Exception while load proc_json:', e)
         else:
             processes = pr if app == '/(ALL)' else [
                 p for p in pr if p['file'] == app]
@@ -56,6 +59,8 @@ class ProcessTree(Gtk.TreeView):
                 self.selected_pid = processes[0]['id']
             self.need_to_change_labels = False
             self.store.clear()
+            i = 0
+            row = 0
             for proc in processes:
                 self.store.append([
                     proc['id'],
@@ -64,7 +69,11 @@ class ProcessTree(Gtk.TreeView):
                     proc['file'],
                     proc['memory']
                 ])
-        self.updating = False
+                if proc['id'] == self.selected_pid:
+                    row = i
+                i += 1
+            self.set_cursor(row, self.get_column(0))
+            self.updating = False
         return True
 
     def clean_store(self):

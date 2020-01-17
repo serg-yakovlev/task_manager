@@ -75,9 +75,12 @@ class MainWindow(Gtk.Window):
         self.param_select.connect("changed", self.selection_changed)
         self.app_select = self.applications_treeview.get_selection()
         self.app_select.connect("changed", self.app_selection_changed)
+        self.applications_treeview.selected_app = '/(ALL)'
 
         def proc_tree_update():
-            self.process_treeview.fill_store(self.selected_app)
+            self.process_treeview.fill_store(
+                self.applications_treeview.selected_app
+            )
             return True
 
         def app_tree_update():
@@ -103,11 +106,13 @@ class MainWindow(Gtk.Window):
         if self.applications_treeview.updating:
             return
         model, treeiter = selection.get_selected()
-        # if treeiter:
-        self.selected_app = model[treeiter][0] + '/' + model[treeiter][1]
-        self.proc_header.set_text('PROCESSES ({0})'.format(self.selected_app))
+        self.applications_treeview.selected_app = model[treeiter][0] + \
+            '/' + model[treeiter][1]
+        self.proc_header.set_text('PROCESSES ({0})'.format(
+            self.applications_treeview.selected_app))
         self.process_treeview.need_to_change_labels = True
-        self.process_treeview.fill_store(self.selected_app)
+        self.process_treeview.fill_store(
+            self.applications_treeview.selected_app)
         name = psutil.Process(
             self.process_treeview.selected_pid
         ).as_dict(attrs=['name'])['name']
@@ -120,21 +125,16 @@ class MainWindow(Gtk.Window):
             'name: {0}\n\n'.format(
                 name)
         )
-        print(self.selected_app)
 
     def selection_changed(self, selection):
         if self.process_treeview.updating:
             return
         model, treeiter = selection.get_selected()
         if treeiter:
-            # for item in model:
-                # print(item)
-            # print(type(treeiter))
             if type(model[treeiter][0]) == str:
                 self.keys_tree.selected_key = model[treeiter][0]
             elif type(model[treeiter][0]) == int:
                 self.process_treeview.selected_pid = model[treeiter][0]
-                print("PID", self.process_treeview.selected_pid, "selected")
                 self.info_header.set_text(
                     'DETAILED PROCESS INFO ({0} {1})'.format(
                         self.process_treeview.selected_pid,
@@ -174,7 +174,7 @@ class MainWindow(Gtk.Window):
             self.process_treeview.selected_pid = 1
             psutil.Process(pid).kill()
         except Exception as e:
-            print(e)
+            pass
         else:
             self.process_info_label.set_text(
                 'Process {0} {1} killed.'.format(pid, name)

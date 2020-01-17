@@ -28,6 +28,9 @@ class ApplicationTree(Gtk.TreeView):
             self.append_column(column)
             if col_n == "memory %":
                 column.set_max_width(50)
+        self.set_cursor(0, self.get_column(0))
+        self.app_cursor = self.get_cursor()
+        # print(self.app_cursor)
 
         def update_app_list():
             while True:
@@ -43,12 +46,19 @@ class ApplicationTree(Gtk.TreeView):
             with open('app_list_json', 'r') as file:
                 applications = json.loads(file.read())
         except Exception as e:
-            print(datetime.now(), 'Exception while load app_json:', e)
+            # print(datetime.now(), 'Exception while load app_json:', e)
+            pass
         else:
             self.store.clear()
+            i = 0
+            row = 0
             for app in applications:
                 self.store.append(app)
-        self.updating = False
+                if app[0] + '/' + app[1] == self.selected_app:
+                    row = i
+                i += 1
+            self.set_cursor(row, self.get_column(0))
+            self.updating = False
         return True
 
     def app_list(self):
