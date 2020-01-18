@@ -1,5 +1,6 @@
 import gi
 import psutil
+from datetime import datetime
 from process_tree import ProcessTree
 from applications_tree import ApplicationTree
 from buttons import ProcessKillButton
@@ -130,9 +131,12 @@ class MainWindow(Gtk.Window):
                 self.process_treeview.selected_pid,
                 name)
         )
-        self.process_info_label.set_text(
-            'name: {0}\n\n'.format(
-                name)
+        self.labels_update()
+        self.process_treeview.set_cursor(
+            0, self.process_treeview.get_column(0)
+        )
+        self.process_treeview.app_cursor = (
+            self.process_treeview.get_cursor()
         )
 
     def selection_changed(self, selection):
@@ -150,31 +154,47 @@ class MainWindow(Gtk.Window):
                         model[treeiter][1]
                     )
                 )
-            dict_info = psutil.Process(
-                self.process_treeview.selected_pid).as_dict()
-            if self.keys_tree.selected_key == '(ALL)':
-                info = ''
-                for key in dict_info.keys():
-                    info = '{0} {1}: {2}\n\n'.format(
-                        info,
-                        key,
-                        dict_info[key]
-                    )
-            else:
-                if self.keys_tree.selected_key == 'ppid':
-                    parent_process = ' (parent process: {0})'.format(
-                        psutil.Process(
-                            dict_info['ppid']
-                        ).name()
-                    ) if self.process_treeview.selected_pid > 1 else '(None)'
-                else:
-                    parent_process = ''
-                info = '{0}: {1} {2}\n\n'.format(
-                    self.keys_tree.selected_key,
-                    dict_info[self.keys_tree.selected_key],
-                    parent_process,
+            self.labels_update()
+
+    def labels_update(self):
+
+        def float_to_date(float_arg):
+            date = datetime.fromtimestamp(
+                float_arg
+            ).strftime('%H:%M:%S %Y-%m-%d')
+            return date
+
+        dict_info = psutil.Process(
+            self.process_treeview.selected_pid).as_dict()
+        if self.keys_tree.selected_key == '(ALL)':
+            info = ''
+            for key in dict_info.keys():
+                info = '{0} {1}: {2}\n\n'.format(
+                    info,
+                    key,
+                    dict_info[key]
                 )
-            self.process_info_label.set_text(info[:])
+        else:
+            if self.keys_tree.selected_key == 'ppid':
+                parent_process = ' (parent process: {0})'.format(
+                    psutil.Process(
+                        dict_info['ppid']
+                    ).name()
+                ) if self.process_treeview.selected_pid > 1 else '(None)'
+            else:
+                parent_process = ''
+            if self.keys_tree.selected_key == 'create_time':
+                formatted_time = ' ({0})'.format(
+                    float_to_date(dict_info['create_time'])
+                )
+            else:
+                formatted_time = ''
+            info = '{0}: {1} {2} {3}\n\n'.format(
+                self.keys_tree.selected_key,
+                dict_info[self.keys_tree.selected_key],
+                parent_process, formatted_time
+            )
+        self.process_info_label.set_text(info[:])
 
     def kill_process(self, button):
         pid = self.process_treeview.selected_pid
