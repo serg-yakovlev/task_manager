@@ -2,7 +2,7 @@ import gi
 import psutil
 from process_tree import ProcessTree
 from applications_tree import ApplicationTree
-from buttons import ProcessKillButton, FreezeButton
+from buttons import ProcessKillButton
 from info_keys_tree import InfoTree
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GLib
@@ -45,15 +45,15 @@ class MainWindow(Gtk.Window):
         self.process_scroll.add_with_viewport(self.process_treeview)
         button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         right_box.pack_end(button_box, False, True, 0)
-        button_close = Gtk.Button(label="Close")
-        button_close.connect("clicked", Gtk.main_quit)
-        button_box.pack_start(button_close, True, True, 0)
-        self.freeze_button = FreezeButton()
-        self.freeze_button.connect('clicked', self.freeze)
-        button_box.pack_start(self.freeze_button, True, True, 0)
-        self.button_kill = ProcessKillButton()
-        self.button_kill.connect("clicked", self.kill_process)
-        button_box.pack_start(self.button_kill, True, True, 0)
+        close_button = Gtk.Button(label="Close")
+        close_button.connect("clicked", self.close_app)
+        button_box.pack_start(close_button, True, True, 0)
+        # self.freeze_button = FreezeButton()
+        # self.freeze_button.connect('clicked', self.freeze)
+        # button_box.pack_start(self.freeze_button, True, True, 0)
+        self.proc_kill_button = ProcessKillButton()
+        self.proc_kill_button.connect("clicked", self.kill_process)
+        button_box.pack_start(self.proc_kill_button, True, True, 0)
         self.process_info_label = Gtk.Label()
         self.process_info_label.set_size_request(430, 210)
         self.process_info_label.set_selectable(True)
@@ -78,8 +78,11 @@ class MainWindow(Gtk.Window):
         self.app_select = self.applications_treeview.get_selection()
         self.app_select.connect("changed", self.app_selection_changed)
         self.applications_treeview.selected_app = '/(ALL)'
+        self.closing = False
 
         def proc_tree_update():
+            if self.closing:
+                return False
             self.process_treeview.fill_store(
                 self.applications_treeview.selected_app
             )
@@ -87,6 +90,8 @@ class MainWindow(Gtk.Window):
             return True
 
         def app_tree_update():
+            if self.closing:
+                return False
             self.applications_treeview.fill_store()
             app_adj.set_value(0)
             return True
@@ -94,17 +99,17 @@ class MainWindow(Gtk.Window):
         GLib.timeout_add_seconds(1, proc_tree_update)
         GLib.timeout_add_seconds(1, app_tree_update)
 
-    def freeze(self, button):
-        self.process_treeview.frozen = (
-            True if not self.process_treeview.frozen else False
-        )
-        self.applications_treeview.frozen = (
-            True if not self.applications_treeview.frozen else False
-        )
-        button.set_label(
-            label=(
-                'Continue' if self.process_treeview.frozen else 'Freeze')
-        )
+#    def freeze(self, button):
+#        self.process_treeview.frozen = (
+#            True if not self.process_treeview.frozen else False
+#        )
+#        self.applications_treeview.frozen = (
+#            True if not self.applications_treeview.frozen else False
+#        )
+#        button.set_label(
+#            label=(
+#                'Continue' if self.process_treeview.frozen else 'Freeze')
+#        )
 
     def app_selection_changed(self, selection):
         if self.applications_treeview.updating:
@@ -197,6 +202,16 @@ class MainWindow(Gtk.Window):
                 self.process_treeview.proc_cursor = (
                     self.process_treeview.get_cursor()
                 )
+
+    def close_app(self, button):
+        psutil.Process(
+            self.applications_treeview.app_update_pid
+        ).kill()
+        psutil.Process(
+            self.process_treeview.proc_update_pid
+        ).kill()
+        self.closing = True
+        Gtk.main_quit()
 
 
 if __name__ == '__main__':

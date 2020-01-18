@@ -38,6 +38,8 @@ class ProcessTree(Gtk.TreeView):
         p = Process(target=update_proc_list)
         p.start()
 
+        self.proc_update_pid = p.pid
+
     def fill_store(self, app='(ALL)'):
         if self.frozen:
             return True

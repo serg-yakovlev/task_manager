@@ -38,6 +38,7 @@ class ApplicationTree(Gtk.TreeView):
 
         p = Process(target=update_app_list)
         p.start()
+        self.app_update_pid = p.pid
 
     def fill_store(self):
         self.updating = True
