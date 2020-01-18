@@ -29,18 +29,20 @@ class MainWindow(Gtk.Window):
         hpaned.add2(right_box)
         applications_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.applications_treeview = ApplicationTree()
-        applications_scroll = Gtk.ScrolledWindow()
+        app_adj = Gtk.Adjustment()
+        applications_scroll = Gtk.ScrolledWindow(app_adj)
         applications_scroll.set_size_request(400, 500)
-        applications_scroll.add(self.applications_treeview)
+        applications_scroll.add_with_viewport(self.applications_treeview)
         left_box.pack_start(applications_tree_box, False, True, 0)
         applications_tree_box.pack_start(applications_scroll, True, True, 0)
+        proc_adj = Gtk.Adjustment()
         process_tree_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         right_box.pack_start(process_tree_box, False, True, 0)
-        self.process_scroll = Gtk.ScrolledWindow()
+        self.process_scroll = Gtk.ScrolledWindow(proc_adj)
         self.process_scroll.set_size_request(600, 220)
         process_tree_box.pack_start(self.process_scroll, True, True, 0)
         self.process_treeview = ProcessTree()
-        self.process_scroll.add(self.process_treeview)
+        self.process_scroll.add_with_viewport(self.process_treeview)
         button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         right_box.pack_end(button_box, False, True, 0)
         button_close = Gtk.Button(label="Close")
@@ -81,10 +83,12 @@ class MainWindow(Gtk.Window):
             self.process_treeview.fill_store(
                 self.applications_treeview.selected_app
             )
+            proc_adj.set_value(0)
             return True
 
         def app_tree_update():
             self.applications_treeview.fill_store()
+            app_adj.set_value(0)
             return True
 
         GLib.timeout_add_seconds(1, proc_tree_update)
@@ -171,14 +175,28 @@ class MainWindow(Gtk.Window):
         pid = self.process_treeview.selected_pid
         name = psutil.Process(pid).name()
         try:
-            self.process_treeview.selected_pid = 1
             psutil.Process(pid).kill()
         except Exception as e:
-            pass
+            print("Process {0} (PID {1}) can't be killed".format(name, pid))
+            print(e)
         else:
             self.process_info_label.set_text(
                 'Process {0} {1} killed.'.format(pid, name)
             )
+            if self.process_treeview.proc_counter == 1:
+                self.applications_treeview.set_cursor(
+                    0, self.applications_treeview.get_column(0)
+                )
+                self.applications_treeview.app_cursor = (
+                    self.applications_treeview.get_cursor()
+                )
+            else:
+                self.process_treeview.set_cursor(
+                    0, self.process_treeview.get_column(0)
+                )
+                self.process_treeview.proc_cursor = (
+                    self.process_treeview.get_cursor()
+                )
 
 
 if __name__ == '__main__':

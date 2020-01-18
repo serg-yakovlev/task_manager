@@ -3,9 +3,9 @@ import psutil
 import json
 from multiprocessing import Process
 from threading import Lock
-from datetime import datetime
+# from datetime import datetime
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GdkPixbuf
+from gi.repository import Gtk
 
 
 class ProcessTree(Gtk.TreeView):
@@ -32,7 +32,6 @@ class ProcessTree(Gtk.TreeView):
 
         def update_proc_list():
             while True:
-                # time.sleep(1)
                 with LOCK:
                     self.proc_list()
 
@@ -46,9 +45,8 @@ class ProcessTree(Gtk.TreeView):
         try:
             with open('proc_list_json', 'r') as file:
                 pr = json.loads(file.read())
-        except Exception as e:
+        except Exception:
             pass
-            #print(datetime.now(), 'Exception while load proc_json:', e)
         else:
             processes = pr if app == '/(ALL)' else [
                 p for p in pr if p['file'] == app]
@@ -73,6 +71,7 @@ class ProcessTree(Gtk.TreeView):
                     row = i
                 i += 1
             self.set_cursor(row, self.get_column(0))
+            self.proc_counter = i
             self.updating = False
         return True
 
@@ -81,7 +80,6 @@ class ProcessTree(Gtk.TreeView):
             self.store.clear()
 
     def proc_list(self):
-        # print('iter_process')
         processes = []
         for proc in psutil.process_iter():
             try:
